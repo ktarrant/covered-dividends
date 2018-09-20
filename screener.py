@@ -2,7 +2,7 @@ import datetime
 from collections import OrderedDict
 import pandas as pd
 
-from util import soup_url
+from util import soup_url, try_numeric
 
 url_filter_options = OrderedDict([
     ("cap_mega", "Mega Market Cap"),
@@ -42,10 +42,7 @@ def parse_earnings(ed : str):
 def parse_numeric(num : str):
     num = num.replace(",", "").replace("%", "e-2")
     num = num.replace("K", "e3").replace("M", "e6").replace("B", "e9")
-    try:
-        return float(num)
-    except ValueError:
-        return None
+    return try_numeric(num)
     
 def parse_finviz_screener(soup):
     content = soup.find('div', {'id': 'screener-content'})
