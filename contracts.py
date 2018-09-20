@@ -54,6 +54,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Downloads Nasdaq options chain data")
     parser.add_argument("ticker", help="Symbol to look up")
+    parser.add_argument("--out", default="chain.csv", help="Result CSV file")
     parser.add_argument("--after", default=None, help="Pick an expiration after this date")
 
     args = parser.parse_args()
@@ -66,4 +67,6 @@ if __name__ == "__main__":
 
     else:
         chain_df = parse_chain(soup)
-        print(chain_df)
+    
+    print(chain_df)
+    chain_df.to_csv(args.out)
