@@ -56,14 +56,38 @@ if __name__ == "__main__":
     parser.add_argument("ticker", help="Symbol to look up")
     parser.add_argument("--out", default="chain.csv", help="Result CSV file")
     parser.add_argument("--after", default=None, help="Pick an expiration after this date")
+    parser.add_argument("--before", default=None, help="Pick an expiration before this date")
 
     args = parser.parse_args()
 
     soup = load_nasdaq_options(args.ticker)
+
     exp_df = parse_expirations(soup)
     print(exp_df)
+
     if args.after:
-        raise NotImplementedError("--after")
+        after_date = datetime.datetime.strptime(args.after, "%Y-%m-%d").date()
+        # TODO: This will always select the month after, even though we may be able to pick
+        # an expiration in the current month, because we are at the first of the month.
+        valid_exp_df = exp_df[exp_df["Expiration Month"] > after_date]
+        for i in valid_exp_df.index:
+            exp_month = valid_exp_df.iloc[i]
+            chain_soup = soup_url(exp_month["Link"])
+            chain_df_all = parse_chain(chain_soup)
+            chain_df = chain_df_all[chain_df_all["Call Expiration"] > after_date]
+            if len(chain_df.index) > 0:
+                break
+
+    elif args.before:
+        before_date = datetime.datetime.strptime(args.before, "%Y-%m-%d").date()
+        valid_exp_df = exp_df[exp_df["Expiration Month"] < before_date]
+        for i in valid_exp_df.index[::-1]:
+            exp_month = valid_exp_df.iloc[i]
+            chain_soup = soup_url(exp_month["Link"])
+            chain_df_all = parse_chain(chain_soup)
+            chain_df = chain_df_all[chain_df_all["Call Expiration"] < before_date]
+            if len(chain_df.index) > 0:
+                break
 
     else:
         chain_df = parse_chain(soup)
