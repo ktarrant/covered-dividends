@@ -49,6 +49,29 @@ def parse_chain(soup):
     df = df.drop("Root", axis=1).set_index("Strike")
     return df
 
+def find_expirations_after(exp_df, after_date, option="Call"):
+    valid_exp_df = exp_df[exp_df["Expiration Month"] >= after_date]
+    for i in valid_exp_df.index:
+        exp_month = valid_exp_df.iloc[i]
+        chain_soup = soup_url(exp_month["Link"])
+        chain_df_all = parse_chain(chain_soup)
+        chain_df = chain_df_all[chain_df_all[option+" Expiration"] > after_date]
+        if len(chain_df.index) > 0:
+            return chain_df
+    raise KeyError("Failed to find an expiration after {}".format(after_date))
+
+def find_expirations_before(exp_df, before_date, option="Call"):
+    before_date_month = datetime.date(year=before_date.year, month=before_date.month, day=1)
+    valid_exp_df = exp_df[exp_df["Expiration Month"] <= before_date_month]
+    for i in valid_exp_df.index[::-1]:
+        exp_month = valid_exp_df.iloc[i]
+        chain_soup = soup_url(exp_month["Link"])
+        chain_df_all = parse_chain(chain_soup)
+        chain_df = chain_df_all[chain_df_all[option+" Expiration"] < before_date]
+        if len(chain_df.index) > 0:
+            return chain_df
+    raise KeyError("Failed to find an expiration before {}".format(before_date))
+
 if __name__ == "__main__":
     import argparse
 
@@ -67,27 +90,11 @@ if __name__ == "__main__":
 
     if args.after:
         after_date = datetime.datetime.strptime(args.after, "%Y-%m-%d").date()
-        # TODO: This will always select the month after, even though we may be able to pick
-        # an expiration in the current month, because we are at the first of the month.
-        valid_exp_df = exp_df[exp_df["Expiration Month"] > after_date]
-        for i in valid_exp_df.index:
-            exp_month = valid_exp_df.iloc[i]
-            chain_soup = soup_url(exp_month["Link"])
-            chain_df_all = parse_chain(chain_soup)
-            chain_df = chain_df_all[chain_df_all["Call Expiration"] > after_date]
-            if len(chain_df.index) > 0:
-                break
+        chain_df = find_expirations_after(exp_df, after_date)
 
     elif args.before:
         before_date = datetime.datetime.strptime(args.before, "%Y-%m-%d").date()
-        valid_exp_df = exp_df[exp_df["Expiration Month"] < before_date]
-        for i in valid_exp_df.index[::-1]:
-            exp_month = valid_exp_df.iloc[i]
-            chain_soup = soup_url(exp_month["Link"])
-            chain_df_all = parse_chain(chain_soup)
-            chain_df = chain_df_all[chain_df_all["Call Expiration"] < before_date]
-            if len(chain_df.index) > 0:
-                break
+        chain_df = find_expirations_before(exp_df, before_date)
 
     else:
         chain_df = parse_chain(soup)
