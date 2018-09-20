@@ -22,7 +22,7 @@ def load_finviz_screener(filter_options=list(url_filter_options.keys())):
     screener_url = url_base + "&".join(["{}={}".format(k, url_params[k]) for k in url_params])
     return soup_url(screener_url)
 
-def estimate_year(dt, cutoff_days=182):
+def estimate_year(dt : datetime.date, cutoff_days=182):
     today = datetime.date.today()
     est = datetime.date(year=today.year, month=dt.month, day=dt.day)
     if est > today:
