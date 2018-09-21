@@ -19,6 +19,8 @@ def parse_short_date(dt : str, day=1):
     
 def parse_expirations(soup):
     chain_dates = soup.find("div", id="OptionsChain-dates")
+    if not chain_dates:
+        return pd.DataFrame(columns=headers)
     
     headers = ["Expiration Month", "Link"]
     data = [[parse_short_date(a.text.strip()), a.attrs["href"]]
@@ -46,7 +48,7 @@ def parse_chain(soup):
     df[dt_cols] = df[dt_cols].apply(pd.to_datetime, axis=1)
     num_cols = [col for col in df.columns if "Expiration" not in col]
     df[num_cols] = df[num_cols].applymap(try_numeric)
-    df = df.drop("Root", axis=1).set_index("Strike")
+    df = df.drop("Root", axis=1)
     return df
 
 def find_expirations_after(exp_df, after_date, option="Call"):
@@ -56,6 +58,8 @@ def find_expirations_after(exp_df, after_date, option="Call"):
         chain_soup = soup_url(exp_month["Link"])
         chain_df_all = parse_chain(chain_soup)
         chain_df = chain_df_all[chain_df_all[option+" Expiration"] > after_date]
+        chain_df = chain_df.drop([c for c in chain_df.columns
+            if (c != "Strike" and option not in c)], axis=1)
         if len(chain_df.index) > 0:
             return chain_df
     raise KeyError("Failed to find an expiration after {}".format(after_date))
@@ -68,6 +72,8 @@ def find_expirations_before(exp_df, before_date, option="Call"):
         chain_soup = soup_url(exp_month["Link"])
         chain_df_all = parse_chain(chain_soup)
         chain_df = chain_df_all[chain_df_all[option+" Expiration"] < before_date]
+        chain_df = chain_df.drop([c for c in chain_df.columns
+            if (c != "Strike" and option not in c)], axis=1)
         if len(chain_df.index) > 0:
             return chain_df
     raise KeyError("Failed to find an expiration before {}".format(before_date))

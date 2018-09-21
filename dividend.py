@@ -27,7 +27,7 @@ def parse_nasdaq_dividends(soup):
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Downloads Finviz screener results")
+    parser = argparse.ArgumentParser(description="Downloads Nasdaq dividend history")
     parser.add_argument("ticker", help="Symbol to look up")
     parser.add_argument("--out", default="dividends.csv", help="Results CSV filename")
 
