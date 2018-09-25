@@ -52,9 +52,10 @@ def parse_chain(soup):
     return df
 
 def find_expirations_after(exp_df, after_date, option="Call"):
-    valid_exp_df = exp_df[exp_df["Expiration Month"] >= after_date]
+    after_date_month = datetime.date(year=after_date.year, month=after_date.month, day=1)
+    valid_exp_df = exp_df[exp_df["Expiration Month"] >= after_date_month]
     for i in valid_exp_df.index:
-        exp_month = valid_exp_df.iloc[i]
+        exp_month = valid_exp_df.loc[i]
         chain_soup = soup_url(exp_month["Link"])
         chain_df_all = parse_chain(chain_soup)
         chain_df = chain_df_all[chain_df_all[option+" Expiration"] > after_date]
@@ -62,13 +63,16 @@ def find_expirations_after(exp_df, after_date, option="Call"):
             if (c != "Strike" and option not in c)], axis=1)
         if len(chain_df.index) > 0:
             return chain_df
+        else:
+            log.info("Expiration month '{}' has no {}s with expiration after {}".format(
+                exp_month, option, after_date))
     raise KeyError("Failed to find an expiration after {}".format(after_date))
 
 def find_expirations_before(exp_df, before_date, option="Call"):
     before_date_month = datetime.date(year=before_date.year, month=before_date.month, day=1)
     valid_exp_df = exp_df[exp_df["Expiration Month"] <= before_date_month]
     for i in valid_exp_df.index[::-1]:
-        exp_month = valid_exp_df.iloc[i]
+        exp_month = valid_exp_df.loc[i]
         chain_soup = soup_url(exp_month["Link"])
         chain_df_all = parse_chain(chain_soup)
         chain_df = chain_df_all[chain_df_all[option+" Expiration"] < before_date]
@@ -76,6 +80,9 @@ def find_expirations_before(exp_df, before_date, option="Call"):
             if (c != "Strike" and option not in c)], axis=1)
         if len(chain_df.index) > 0:
             return chain_df
+        else:
+            log.info("Expiration month '{}' has no {}s with expiration before {}".format(
+                exp_month, option, before_date))
     raise KeyError("Failed to find an expiration before {}".format(before_date))
 
 if __name__ == "__main__":
@@ -86,13 +93,16 @@ if __name__ == "__main__":
     parser.add_argument("--out", default="chain.csv", help="Result CSV file")
     parser.add_argument("--after", default=None, help="Pick an expiration after this date")
     parser.add_argument("--before", default=None, help="Pick an expiration before this date")
+    parser.add_argument("--verbose", action="store_true", help="verbose logging")
 
     args = parser.parse_args()
+
+    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
 
     soup = load_nasdaq_options(args.ticker)
 
     exp_df = parse_expirations(soup)
-    print(exp_df)
+    log.info("Expirations found:\n{}".format(exp_df))
 
     if args.after:
         after_date = datetime.datetime.strptime(args.after, "%Y-%m-%d").date()
@@ -105,5 +115,5 @@ if __name__ == "__main__":
     else:
         chain_df = parse_chain(soup)
     
-    print(chain_df)
+    log.info("Selected chain:\n{}".format(chain_df))
     chain_df.to_csv(args.out)
