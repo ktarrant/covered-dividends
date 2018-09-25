@@ -2,7 +2,7 @@ import datetime
 from collections import OrderedDict
 import pandas as pd
 
-from util import soup_url, try_numeric
+from util import soup_url, try_numeric, parse_shorthand
 
 url_filter_options = OrderedDict([
     ("cap_mega", "Mega Market Cap"),
@@ -38,11 +38,6 @@ def parse_earnings(ed : str):
     ed_date = datetime.datetime.strptime(ed_date_raw, "%b %d")
     ed_date = estimate_year(ed_date)
     return ed_date
-
-def parse_numeric(num : str):
-    num = num.replace(",", "").replace("%", "e-2")
-    num = num.replace("K", "e3").replace("M", "e6").replace("B", "e9")
-    return try_numeric(num)
     
 def parse_finviz_screener(soup):
     content = soup.find('div', {'id': 'screener-content'})
@@ -57,7 +52,7 @@ def parse_finviz_screener(soup):
         columns=headers).set_index("Ticker")
     df["Earnings"] = df["Earnings"].apply(parse_earnings)
     numeric_cols = [col for col in df.columns if col not in "Earnings"]
-    df[numeric_cols] = df[numeric_cols].applymap(parse_numeric)
+    df[numeric_cols] = df[numeric_cols].applymap(parse_shorthand)
     df = df.rename(index=str, columns={c: c+" %" for c in pct_columns})
     return df
 

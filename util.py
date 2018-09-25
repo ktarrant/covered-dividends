@@ -17,3 +17,8 @@ def try_numeric(val):
         return pd.to_numeric(val)
     except ValueError:
         return None
+
+def parse_shorthand(num : str):
+    num = num.replace(",", "").replace("$", "").replace("%", "e-2")
+    num = num.replace("K", "e3").replace("M", "e6").replace("B", "e9")
+    return try_numeric(num)
