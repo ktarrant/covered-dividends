@@ -7,11 +7,29 @@ from dividend import load_nasdaq_dividends, parse_nasdaq_dividends
 from contracts import (
     load_nasdaq_options,
     parse_expirations,
+    ExpirationError,
     find_expirations_after,
     find_expirations_before,
 )
 
 log = logging.getLogger(__name__)
+
+def find_otm_options(exp_df, exp_date, price, option="Call", after=True, above=True, day_offset=0):
+    comp_offset = day_offset if after else -day_offset
+    comp_date = exp_date + datetime.timedelta(days=comp_offset)
+
+    if after:
+        chain_df = find_expirations_after(exp_df, comp_date, option=option)
+    else:
+        chain_df = find_expirations_before(exp_df, comp_date, option=option)
+
+    if above:
+        otm = chain_df[chain_df.Strike >= price]
+    else:
+        otm = chain_df[chain_df.Strike <= price]
+    log.debug("Found {} OTM {}s".format(len(otm.index), option))
+
+    return otm
 
 def find_wheel_options(ticker, max_put_strike, min_call_strike, days_before_div=10, days_after_div=20):
     # load the dividend history from nasdaq
@@ -37,33 +55,39 @@ def find_wheel_options(ticker, max_put_strike, min_call_strike, days_before_div=
     log.debug("Found expiration months:\n{}".format(exp_df["Expiration Month"]))
 
     # find puts expiring before the dividend
-    before_date = next_div_date - datetime.timedelta(days=days_before_div)
-    put_chain_df = find_expirations_before(exp_df, before_date, option="Put")
-    otm_puts = put_chain_df[put_chain_df.Strike <= max_put_strike]
-    log.debug("Found {} OTM puts".format(len(otm_puts.index)))
-    if len(otm_puts.index) > 0:
-        best_put_row = otm_puts.loc[otm_puts["Put Open"].argmax()].rename(
-            index={"Strike": "Put Strike"})
-        log.info("Best put row:\n{}".format(best_put_row))
-    else:
-        log.error("No OTM puts found!")
+    try:
+        otm_puts = find_otm_options(exp_df, next_div_date, max_put_strike, option="Put", after=False, above=False, day_offset=days_before_div)
+        if len(otm_puts.index) > 0:
+            best_put_row = otm_puts.loc[otm_puts["Put Open"].argmax()].rename(
+                index={"Strike": "Put Strike"})
+            log.info("Best put row:\n{}".format(best_put_row))
+        else:
+            log.error("No OTM puts found!")
+            best_put_row = pd.Series()
+    except ExpirationError as e:
+        log.error(e)
         best_put_row = pd.Series()
 
     # find calls expiring after the dividend
-    after_date = next_div_date + datetime.timedelta(days=days_after_div)
-    call_chain_df = find_expirations_after(exp_df, after_date.date(), option="Call")
-    otm_calls = call_chain_df[call_chain_df.Strike >= min_call_strike]
-    log.debug("Found {} OTM calls".format(len(otm_calls.index)))
-    if len(otm_calls.index) > 0:
-        best_call_row = otm_calls.loc[otm_calls["Call Open"].argmax()].rename(
-            index={"Strike": "Call Strike"})
-        log.info("Best call row:\n{}".format(best_call_row))
-    else:
-        log.error("No OTM calls found!")
+    try:
+        otm_calls = find_otm_options(exp_df, next_div_date, min_call_strike, day_offset=days_after_div)
+        if len(otm_calls.index) > 0:
+            best_call_row = otm_calls.loc[otm_calls["Call Open"].argmax()].rename(
+                index={"Strike": "Call Strike"})
+            log.info("Best call row:\n{}".format(best_call_row))
+        else:
+            log.error("No OTM calls found!")
+            best_call_row = pd.Series()
+    except ExpirationError as e:
+        log.error(e)
         best_call_row = pd.Series()
 
     # combined the two and return
-    return pd.concat([best_put_row, best_call_row])
+    df = pd.concat([best_put_row, best_call_row])
+    df["Ex-Div Date (est)"] = next_div_date.date()
+    df["Div Amount (est)"] = div_cash
+    df["Dividend Period"] = div_period.days
+    return df
 
 if __name__ == "__main__":
     import argparse

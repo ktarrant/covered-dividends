@@ -51,6 +51,9 @@ def parse_chain(soup):
     df = df.drop("Root", axis=1)
     return df
 
+class ExpirationError(Exception):
+    pass
+
 def find_expirations_after(exp_df, after_date, option="Call"):
     after_date_month = datetime.date(year=after_date.year, month=after_date.month, day=1)
     valid_exp_df = exp_df[exp_df["Expiration Month"] >= after_date_month]
@@ -66,7 +69,7 @@ def find_expirations_after(exp_df, after_date, option="Call"):
         else:
             log.info("Expiration month '{}' has no {}s with expiration after {}".format(
                 exp_month, option, after_date))
-    raise KeyError("Failed to find an expiration after {}".format(after_date))
+    raise ExpirationError("Failed to find an expiration after {}".format(after_date))
 
 def find_expirations_before(exp_df, before_date, option="Call"):
     before_date_month = datetime.date(year=before_date.year, month=before_date.month, day=1)
@@ -83,7 +86,7 @@ def find_expirations_before(exp_df, before_date, option="Call"):
         else:
             log.info("Expiration month '{}' has no {}s with expiration before {}".format(
                 exp_month, option, before_date))
-    raise KeyError("Failed to find an expiration before {}".format(before_date))
+    raise ExpirationError("Failed to find an expiration before {}".format(before_date))
 
 if __name__ == "__main__":
     import argparse
