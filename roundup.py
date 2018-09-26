@@ -5,7 +5,23 @@ from capture import find_wheel_options
 
 log = logging.getLogger(__name__)
 
+def add_capture_options(screener_df, days_before_div, days_after_div, put_downside, call_upside):
+    for ticker in screener_df.index:
+        price = screener_df.loc[ticker, "Price"]
+        put_price = (1 - args.put_downside / 100.0) * price
+        call_price = (1 + args.call_upside / 100.0) * price
+
+        wheel_df = find_wheel_options(ticker,
+            max_put_strike=put_price,
+            min_call_strike=call_price,
+            days_before_div=args.days_before_div,
+            days_after_div=args.days_after_div)
+
+        for i in wheel_df.index:
+            screener_df.loc[ticker, i] = wheel_df.loc[i]
+
 if __name__ == "__main__":
+    import datetime
     import argparse
     from collections import OrderedDict
 
@@ -23,7 +39,7 @@ if __name__ == "__main__":
         help="Put strike below this percent (/100) below current price")
     parser.add_argument("--call_upside", default=5, type=float,
         help="Call strike above this percent (/100) above current price")
-    parser.add_argument("--out", default="roundup.csv", help="Result CSV file")
+    parser.add_argument("--out", default="{today}_{screener}.csv", help="Result CSV format")
     parser.add_argument("--verbose", action="store_true", help="verbose logging")
 
     args = parser.parse_args()
@@ -34,19 +50,11 @@ if __name__ == "__main__":
     screener_df = parse_finviz_screener(screener_soup)
     log.info("Screener results:\n{}".format(screener_df))
 
-    for ticker in screener_df.index:
-        price = screener_df.loc[ticker, "Price"]
-        put_price = (1 - args.put_downside / 100.0) * price
-        call_price = (1 + args.call_upside / 100.0) * price
-
-        wheel_df = find_wheel_options(ticker,
-            max_put_strike=put_price,
-            min_call_strike=call_price,
-            days_before_div=args.days_before_div,
-            days_after_div=args.days_after_div)
-
-        for i in wheel_df.index:
-            screener_df.loc[ticker, i] = wheel_df.loc[i]
+    add_capture_options(screener_df,
+        args.days_before_div, args.days_after_div,
+        args.put_downside, args.call_upside)
 
     print(screener_df)
-    screener_df.to_csv(args.out)
+    fn = args.out.format(today=datetime.date.today(), screener=args.screener)
+    log.info("Saving file: {}".format(fn))
+    screener_df.to_csv(fn)
