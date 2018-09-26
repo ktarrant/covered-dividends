@@ -56,7 +56,8 @@ def find_wheel_options(ticker, max_put_strike, min_call_strike, days_before_div=
 
     # find puts expiring before the dividend
     try:
-        otm_puts = find_otm_options(exp_df, next_div_date, max_put_strike, option="Put", after=False, above=False, day_offset=days_before_div)
+        otm_puts = find_otm_options(exp_df, next_div_date, max_put_strike,
+            option="Put", after=False, above=False, day_offset=days_before_div)
         if len(otm_puts.index) > 0:
             best_put_row = otm_puts.loc[otm_puts["Put Open"].argmax()].rename(
                 index={"Strike": "Put Strike"})
@@ -70,7 +71,8 @@ def find_wheel_options(ticker, max_put_strike, min_call_strike, days_before_div=
 
     # find calls expiring after the dividend
     try:
-        otm_calls = find_otm_options(exp_df, next_div_date, min_call_strike, day_offset=days_after_div)
+        otm_calls = find_otm_options(exp_df, next_div_date, min_call_strike,
+            day_offset=days_after_div)
         if len(otm_calls.index) > 0:
             best_call_row = otm_calls.loc[otm_calls["Call Open"].argmax()].rename(
                 index={"Strike": "Call Strike"})
