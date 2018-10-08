@@ -6,13 +6,19 @@ from util import soup_url, try_numeric, parse_shorthand
 
 url_filter_options = OrderedDict([
     ("cap_mega", "Mega Market Cap"),
+    ("cap_midover", "Mid Market Cap"),
     ("fa_payoutratio_pos", "Positive Payout Ratio"),
     ("idk_sp500", "S&P500 Member"),
+    ("sh_opt_option", "Optionable"),
+    ("fa_curratio_o1.5", "Current Ratio > 1.5"),
+    ("fa_debteq_u0.5", "Debt/Eq < 0.5"),
+    ("geo_usa", "American Company"),
+    ("sh_avgvol_o1000", "Avg Volume > 1mil"),
 ])
 url_base = "https://finviz.com/screener.ashx?"
 pct_columns = ["Change", "Dividend", "Gross M", "Oper M", "Profit M", "ROA", "ROE", "ROI"]
 
-def load_finviz_screener(filter_options=list(url_filter_options.keys())):
+def load_finviz_screener(filter_options):
     url_params = OrderedDict([
         ("v", "161"),
         ("f", ",".join(filter_options)),
@@ -34,7 +40,10 @@ def estimate_year(dt : datetime.date, cutoff_days=182):
             return est
 
 def parse_earnings(ed : str):
-    ed_date_raw, ed_time_raw = ed.split("/")
+    try:
+        ed_date_raw, _ = ed.split("/")
+    except ValueError:
+        ed_date_raw = ed
     ed_date = datetime.datetime.strptime(ed_date_raw, "%b %d")
     ed_date = estimate_year(ed_date)
     return ed_date

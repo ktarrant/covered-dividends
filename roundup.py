@@ -27,6 +27,10 @@ if __name__ == "__main__":
 
     filters = OrderedDict([
         ("blue-chips", ["cap_mega", "fa_payoutratio_pos", "idk_sp500"]),
+        ("mid-safe-u50", [
+            "cap_midover", "fa_curratio_o1.5", "fa_debteq_u0.5", "fa_payoutratio_pos", "fa_div_o1",
+            "geo_usa", "sh_opt_option", "sh_price_u50",
+        ]),
     ])
 
     parser = argparse.ArgumentParser(description="Finds a put option and call option for wheeling")
